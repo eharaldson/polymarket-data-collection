@@ -150,6 +150,7 @@ ruff check .
 ## License
 
 MIT. Built by [Erik Haraldson](https://github.com/eharaldson), co-founder of
+[EvenFold](https://www.evenfold.ai/) and [Prashast Vir](https://github.com/prash-vir), co-founder of
 [EvenFold](https://www.evenfold.ai/), where we build AI systems for markets.
 
 Nothing here is investment advice. Check Polymarket's terms of service for your
