@@ -1,15 +1,29 @@
 # polymarket-data-collection
 
-Record every order book event for any Polymarket market or event. Give it a
-slug or a polymarket.com URL, and it writes tick-by-tick data from the CLOB
-WebSocket to daily Parquet files.
+Record Polymarket's order book feed for any market or event. Give it a slug or
+a polymarket.com URL, and it writes the market events it receives from the
+CLOB WebSocket to daily Parquet files, with both Polymarket's timestamp and
+your local receipt time.
 
-- **Lossless.** Every snapshot, every level change, every trade and tick size
-  change is recorded exactly as Polymarket sent it, with a local receipt time.
+- **Stored as sent.** Book snapshots, level changes, trades and tick size
+  changes are kept exactly as Polymarket sent them. Reconnects are recorded
+  too, so a gap in the data is marked rather than silent.
 - **Plug and play.** Paste an event URL and it records every open market in
   the event, picks up markets added later, and drops ones that close.
 - **Easy to use.** Every row carries the best bid and ask, so a quote series is
   one filter, and `replay()` rebuilds the full-depth book at any point.
+
+## Example
+
+45 minutes of the White Sox vs. Astros game on 29 September 2026, recorded with
+`polycollect market:mlb-cws-hou-2026-09-29`. One market with two books produced
+93,829 rows: 92,656 level changes, 784 book snapshots and 388 trades.
+
+![Best bid, best ask and trades for the White Sox token during the game](docs/example.png)
+
+Drawn with [`examples/plot_quotes.py`](examples/plot_quotes.py). Replaying the
+recording reproduces the best bid and ask Polymarket reported after every one
+of its 80,490 updates.
 
 ---
 
@@ -63,8 +77,8 @@ polycollect SLUG_OR_URL [SLUG_OR_URL ...]
 
 Days are UTC. Every 5 minutes the current file is sealed and a new part begins,
 and a file still being written ends in `.tmp`. A hard crash loses at most the
-last 5 minutes. Ctrl-C or SIGTERM loses nothing, and a restart continues the
-day's part sequence. Give each running process its own `--data-dir`.
+last 5 minutes. Ctrl-C or SIGTERM writes out everything received so far, and a
+restart continues the day's part sequence. Give each running process its own `--data-dir`.
 
 Each row is one event, in arrival order:
 
@@ -98,13 +112,29 @@ mid = (yes.best_bid.astype(float) + yes.best_ask.astype(float)) / 2
 trades = df[df.event_type == "last_trade_price"]
 ```
 
-Full depth, rebuilt event by event:
+Full depth, rebuilt event by event. This prints the book at the end of the
+example recording:
 
 ```python
 from polycollect.replay import read_events, replay
 
+books = {}
 for event, book in replay(read_events("data")):
-    bids, asks = book.levels(depth=5)           # [(price, size), ...] best first
+    books[event["outcome"]] = book              # latest book for each outcome
+
+bids, asks = books["Chicago White Sox"].levels(depth=5)   # [(price, size), ...] best first
+print(" bid size    bid |   ask  ask size")
+for (bid, bid_size), (ask, ask_size) in zip(bids, asks):
+    print(f"{bid_size:9,.0f}  {bid:.3f} | {ask:.3f}  {ask_size:,.0f}")
+```
+
+```
+ bid size    bid |   ask  ask size
+       44  0.870 | 0.880  56,961
+   74,569  0.860 | 0.890  10,784
+   30,645  0.850 | 0.900  2,549
+      617  0.840 | 0.910  2,297
+      598  0.830 | 0.920  4,128
 ```
 
 `replay()` applies snapshots and deltas per token, skips deltas it can't place
