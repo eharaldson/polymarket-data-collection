@@ -23,7 +23,8 @@ your local receipt time.
 
 Drawn with [`examples/plot_quotes.py`](examples/plot_quotes.py). Replaying the
 recording reproduces the best bid and ask Polymarket reported after every one
-of its 80,490 updates.
+of its 80,490 updates. To reproduce this, [download the recording](https://github.com/eharaldson/polymarket-data-collection/releases/download/v0.1.0/mlb-cws-hou-2026-09-29.zip)
+(2.9 MB) and unzip it; the examples below then run as written against `data/`.
 
 ---
 
